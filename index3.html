@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colorful 3D Pop Spheres and Cylinders</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+<canvas id="myCanvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+    
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('myCanvas') });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;  
+    
+    scene.background = new THREE.Color(0xffffff);
+
+   
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    
+   
+    const sphereColors = [
+        '#F04E30', '#9C2D23', '#8331A7', '#00A17B', '#D70036', 
+        '#98262B', '#0391BB', '#E1C722', '#17495B', '#98262B', 
+        '#592C5F', '#00604A'
+    ];
+
+   
+    const cylinderColors = [
+        '#FF5733', '#DAF7A6', '#FFC300', '#900C3F', '#C70039',
+        '#581845', '#1C2833', '#2980B9', '#8E44AD', '#E74C3C'
+    ];
+
+   
+    const floorGeometry = new THREE.PlaneGeometry(200, 200);
+    const floorMaterial = new THREE.ShadowMaterial({ opacity: 0.3 });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = - Math.PI / 2; 
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    
+    const light1 = new THREE.PointLight(0xf04e30, 1, 200);
+    light1.position.set(10, 10, 10);
+    light1.castShadow = true;
+    light1.shadow.radius = 20; 
+    light1.shadow.bias = -0.001; 
+    scene.add(light1);
+
+    const light2 = new THREE.AmbientLight(0x444444, 2); 
+    scene.add(light2);
+
+   
+    const spheres = [];
+    const sphereCount = 12;
+    const cylinderHeight = 2.5; 
+    const spaceAboveCylinder = 5;
+
+   
+    function checkOverlap(position, minDist = 3) {
+        return spheres.some(sphere => {
+            const distance = position.distanceTo(sphere.position);
+            return distance < minDist;
+        });
+    }
+
+    
+    for (let i = 0; i < sphereCount; i++) {
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        const material = new THREE.MeshStandardMaterial({ color: sphereColors[i], flatShading: false });
+        const sphere = new THREE.Mesh(geometry, material);
+
+       
+        let position;
+        do {
+            position = new THREE.Vector3(Math.random() * 15 - 7.5, Math.random() * 5 + cylinderHeight + spaceAboveCylinder, Math.random() * 15 - 7.5);
+        } while (checkOverlap(position));
+
+        sphere.position.copy(position);
+
+        sphere.castShadow = true;
+        sphere.receiveShadow = true;
+
+      
+        scene.add(sphere);
+        spheres.push(sphere);
+
+       
+        sphere.originalPosition = sphere.position.clone();
+    }
+
+   
+    const cylinders = [];
+    const cylinderCount = 10;  
+
+   
+    function checkCylinderOverlap(position, radius, minDist = 3) {
+        return cylinders.some(cylinder => {
+            const distance = position.distanceTo(cylinder.position);
+            return distance < minDist + radius;
+        });
+    }
+
+    for (let i = 0; i < cylinderCount; i++) {
+        const geometry = new THREE.CylinderGeometry(1, 1, cylinderHeight, 32);
+        const material = new THREE.MeshStandardMaterial({ color: cylinderColors[i % cylinderColors.length], flatShading: false });
+        const cylinder = new THREE.Mesh(geometry, material);
+
+        
+        let position;
+        do {
+            position = new THREE.Vector3(Math.random() * 15 - 7.5, 1.25, Math.random() * 15 - 7.5); 
+        } while (checkCylinderOverlap(position, 1)); 
+
+        cylinder.position.copy(position);
+
+        
+        cylinder.castShadow = true;
+        cylinder.receiveShadow = true;
+
+       
+        scene.add(cylinder);
+        cylinders.push(cylinder);
+    }
+
+    
+    const video = document.createElement('video');
+    video.src = 'video.mp4'; 
+    video.load();
+    video.play();
+    video.loop = true;
+
+   
+    const videoTexture = new THREE.VideoTexture(video);
+    const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.FrontSide });
+
+   
+    const videoGeometry = new THREE.PlaneGeometry(16, 9); 
+    const videoScreen = new THREE.Mesh(videoGeometry, videoMaterial);
+
+    
+    videoScreen.position.set(0, 3.5, -20); 
+    videoScreen.rotation.y = Math.PI / 50;  
+
+  
+    scene.add(videoScreen);
+
+  
+    camera.position.z = 25;
+
+    
+    const bounceSpeed = 0.001;
+    const bounceHeight = 3;
+
+  
+    function animate() {
+        requestAnimationFrame(animate);
+
+       
+        spheres.forEach(sphere => {
+          
+            sphere.position.y = sphere.originalPosition.y + Math.sin(Date.now() * bounceSpeed + sphere.position.x) * bounceHeight;
+        });
+
+       
+        renderer.render(scene, camera);
+        controls.update();
+    }
+
+   
+    window.addEventListener('resize', () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+    });
+
+    
+    animate();
+</script>
+
+</body>
+</html> 
+
+
+
+
